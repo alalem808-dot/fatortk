@@ -52,6 +52,7 @@ class AuthController extends Controller
             'email'        => 'required|email|unique:users,email',
             'password'     => 'required|min:8|confirmed',
             'name'         => 'required|string|max:255',
+            'username'     => 'nullable|string|alpha_dash|min:3|max:50|unique:users,username',
         ]);
 
         $tenant = Tenant::create([
@@ -61,16 +62,56 @@ class AuthController extends Controller
             'status'       => 'trial',
         ]);
 
+        $username = $request->username
+            ?? strtolower(str_replace(' ', '_', $request->name)) . rand(100, 999);
+
+        // التأكد من أن الـ username فريد مع حد أقصى للمحاولات
+        $attempts = 0;
+        while (User::where('username', $username)->exists() && $attempts < 20) {
+            $username = strtolower(str_replace(' ', '_', $request->name)) . rand(100, 9999);
+            $attempts++;
+        }
+        // fallback: استخدام UUID إذا استنفدنا المحاولات
+        if (User::where('username', $username)->exists()) {
+            $username = 'user_' . \Illuminate\Support\Str::random(8);
+        }
+
         $user = User::create([
             'tenant_id' => $tenant->id,
             'name'      => $request->name,
-            'username'  => $request->username ?? strtolower(str_replace(' ', '_', $request->name)) . rand(100,999),
+            'username'  => $username,
             'email'     => $request->email,
             'password'  => Hash::make($request->password),
             'role'      => 'admin',
         ]);
 
         $tenant->templates()->create(['name' => 'القالب الافتراضي', 'is_default' => true]);
+
+        \App\Models\Warehouse::create([
+            'tenant_id'  => $tenant->id,
+            'name'       => 'المخزن الرئيسي',
+            'is_default' => true,
+            'is_active'  => true,
+        ]);
+        \App\Models\PaymentMethod::createDefaults($tenant->id);
+
+        // إنشاء عميل نقدي افتراضي للبيع المباشر
+        $cashCustomer = \App\Models\Customer::create([
+            'tenant_id' => $tenant->id,
+            'name'      => 'عميل نقدي',
+            'notes'     => 'عميل افتراضي للمبيعات المباشرة',
+        ]);
+        \App\Models\Setting::create([
+            'tenant_id' => $tenant->id,
+            'key'       => 'quick_sale_customer_id',
+            'value'     => $cashCustomer->id,
+        ]);
+
+        // منح صلاحيات admin للمستخدم الجديد
+        // نستخدم assignPermissionDirectly بدل syncPermissions على الـ role المشتركة
+        // لتجنب التأثير على admins المستأجرين الآخرين
+        $allPerms = \Spatie\Permission\Models\Permission::all();
+        $user->syncPermissions($allPerms);
 
         Auth::login($user);
         return redirect()->route('dashboard');
@@ -80,6 +121,7 @@ class AuthController extends Controller
     {
         Auth::logout();
         $request->session()->invalidate();
+        $request->session()->regenerateToken();
         return redirect()->route('login');
     }
 }

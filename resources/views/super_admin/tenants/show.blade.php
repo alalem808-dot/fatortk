@@ -71,10 +71,13 @@
                         <div class="col-md-4">
                             <label class="form-label small">خطة الاشتراك</label>
                             <select name="subscription_plan" class="form-select form-select-sm">
-                                <option value="free"       {{ $tenant->subscription_plan=='free'       ?'selected':'' }}>مجاني</option>
-                                <option value="basic"      {{ $tenant->subscription_plan=='basic'      ?'selected':'' }}>أساسي - 2,500 SDG</option>
-                                <option value="pro"        {{ $tenant->subscription_plan=='pro'        ?'selected':'' }}>احترافي - 6,000 SDG</option>
-                                <option value="enterprise" {{ $tenant->subscription_plan=='enterprise' ?'selected':'' }}>مؤسسي - 15,000 SDG</option>
+                                @foreach($plans as $plan)
+                                <option value="{{ $plan->slug }}" {{ $tenant->subscription_plan == $plan->slug ? 'selected' : '' }}>
+                                    {{ $plan->name }}
+                                    @if($plan->price_yearly_usd > 0) — ${{ number_format($plan->price_yearly_usd, 0) }}/سنة @endif
+                                    @if(!$plan->is_active) (معطلة) @endif
+                                </option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-md-4">
@@ -92,6 +95,29 @@
             </div>
         </div>
 
+        {{-- ميزات المشترك --}}
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-0 pt-3">
+                <h6 class="fw-bold mb-0">ميزات المشترك</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="fw-semibold small">محور العملات وأسعار الصرف</div>
+                        <div class="text-muted" style="font-size:.8rem">السماح للمشترك باستخدام عملات متعددة وأسعار الصرف في الفواتير والمشتريات</div>
+                    </div>
+                    <form action="{{ route('super_admin.tenants.toggle-currencies', $tenant) }}" method="POST" class="ms-3">
+                        @csrf
+                        <button type="submit" class="btn btn-sm {{ $tenant->currencies_enabled ? 'btn-success' : 'btn-outline-secondary' }}"
+                            onclick="return confirm('{{ $tenant->currencies_enabled ? 'إلغاء تفعيل محور العملات؟' : 'تفعيل محور العملات؟' }}')">
+                            <i class="fas fa-{{ $tenant->currencies_enabled ? 'toggle-on' : 'toggle-off' }}"></i>
+                            {{ $tenant->currencies_enabled ? 'مفعّل' : 'معطّل' }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         {{-- مستخدمو الشركة --}}
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-0 pt-3">
@@ -100,7 +126,7 @@
             <div class="table-responsive">
                 <table class="table table-hover mb-0 align-middle">
                     <thead class="table-light">
-                        <tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>آخر دخول</th><th>الحالة</th></tr>
+                        <tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>آخر دخول</th><th>الحالة</th><th></th></tr>
                     </thead>
                     <tbody>
                         @foreach($tenant->users as $user)
@@ -109,7 +135,7 @@
                             <td class="text-muted small">{{ $user->email }}</td>
                             <td>
                                 <span class="badge {{ $user->role=='admin' ? 'bg-danger' : ($user->role=='manager' ? 'bg-warning text-dark' : 'bg-secondary') }}">
-                                    {{ ['admin'=>'مدير','manager'=>'مشرف','employee'=>'موظف'][$user->role] }}
+                                    {{ ['admin'=>'مدير','manager'=>'مشرف','employee'=>'موظف','staff'=>'موظف'][$user->role] ?? $user->role }}
                                 </span>
                             </td>
                             <td class="text-muted small">{{ $user->last_login?->format('Y-m-d H:i') ?? 'لم يدخل بعد' }}</td>
@@ -117,6 +143,38 @@
                                 <span class="badge {{ $user->is_active ? 'bg-success' : 'bg-secondary' }}">
                                     {{ $user->is_active ? 'نشط' : 'موقوف' }}
                                 </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#resetModal{{ $user->id }}">
+                                    <i class="fas fa-key"></i>
+                                </button>
+
+                                <div class="modal fade" id="resetModal{{ $user->id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-sm">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h6 class="modal-title">إعادة تعيين كلمة مرور {{ $user->name }}</h6>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{{ route('super_admin.users.reset-password', $user) }}" method="POST">
+                                                @csrf
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">كلمة المرور الجديدة</label>
+                                                        <input type="password" name="password" class="form-control" required minlength="8">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">تأكيد كلمة المرور</label>
+                                                        <input type="password" name="password_confirmation" class="form-control" required>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="submit" class="btn btn-warning btn-sm">حفظ</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                         @endforeach

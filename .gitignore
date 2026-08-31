@@ -16,3 +16,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# ملفات النشر المحلية
+/build_deploy.ps1
+/fatortk_deploy.zip

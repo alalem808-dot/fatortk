@@ -67,7 +67,21 @@ class PDFService
             'default_font' => 'xbriyaz',
         ]);
 
-        $mpdf->WriteHTML($html);
+        // رفع pcre.backtrack_limit لتجنب خطأ HTML كبير
+        $old = ini_get('pcre.backtrack_limit');
+        ini_set('pcre.backtrack_limit', '5000000');
+
+        // تقسيم CSS عن Body لتجنب مشكلة الحجم
+        preg_match('/<style[^>]*>(.*?)<\/style>/si', $html, $cssMatch);
+        $css  = $cssMatch[1] ?? '';
+        $body = preg_replace('/<style[^>]*>.*?<\/style>/si', '', $html);
+
+        if ($css) {
+            $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
+        }
+        $mpdf->WriteHTML($body, \Mpdf\HTMLParserMode::HTML_BODY);
+
+        ini_set('pcre.backtrack_limit', $old);
 
         return $mpdf->Output('', 'S');
     }

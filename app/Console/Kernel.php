@@ -12,7 +12,17 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // نسخ احتياطي كامل يومياً الساعة 2 صباحاً
+        $schedule->command('backup:run --type=full --prune=30')
+            ->dailyAt('02:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // نسخ احتياطي لكل المشتركين أسبوعياً الأحد الساعة 3 صباحاً
+        $schedule->command('backup:run --type=tenants --prune=60')
+            ->weeklyOn(0, '03:00')
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

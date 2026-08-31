@@ -38,51 +38,132 @@
                 @endphp
                 <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted small">إجمالي الفواتير</span>
-                    <span class="fw-semibold">{{ number_format($totalInvoiced, 2) }} SDG</span>
+                    <span class="fw-semibold">{{ number_format($totalInvoiced, 2) }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted small">المدفوع</span>
-                    <span class="fw-semibold text-success">{{ number_format($totalPaid, 2) }} SDG</span>
+                    <span class="fw-semibold text-success">{{ number_format($totalPaid, 2) }}</span>
                 </div>
                 <hr>
                 <div class="d-flex justify-content-between">
                     <span class="fw-bold">المتبقي</span>
-                    <span class="fw-bold {{ $totalDue > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($totalDue, 2) }} SDG</span>
+                    <span class="fw-bold {{ $totalDue > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($totalDue, 2) }}</span>
                 </div>
             </div>
         </div>
+
+        {{-- سداد على المتأخرات الكلية --}}
+        @if($totalDue > 0)
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-header">
+                <h6 class="fw-bold mb-0"><i class="fas fa-money-bill-wave me-2 text-success"></i>سداد على المتأخرات</h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info py-2 mb-3" style="font-size:.8rem">
+                    <i class="fas fa-info-circle me-1"></i>
+                    سيُوزّع المبلغ تلقائياً من الأقدم للأحدث
+                </div>
+                <form action="{{ route('customers.bulk-payment', $customer) }}" method="POST">
+                    @csrf
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">المبلغ <span class="text-danger">*</span></label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" name="amount" class="form-control"
+                                   min="0.01" step="0.01" max="{{ $totalDue }}"
+                                   placeholder="0.00" required>
+                            <button type="button" class="btn btn-outline-secondary"
+                                    onclick="this.previousElementSibling.value='{{ $totalDue }}'"
+                                    title="سداد الكل">الكل</button>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">طريقة الدفع <span class="text-danger">*</span></label>
+                        <select name="payment_method" class="form-select form-select-sm" required>
+                            @foreach($paymentMethods as $pm)
+                            <option value="{{ $pm->code }}">{{ $pm->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">التاريخ <span class="text-danger">*</span></label>
+                        <input type="date" name="payment_date" class="form-control form-control-sm"
+                               value="{{ date('Y-m-d') }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">ملاحظات</label>
+                        <input type="text" name="notes" class="form-control form-control-sm"
+                               placeholder="اختياري">
+                    </div>
+                    <button type="submit" class="btn btn-success btn-sm w-100">
+                        <i class="fas fa-check-circle me-1"></i> تأكيد السداد
+                    </button>
+                </form>
+            </div>
+        </div>
+        @endif
     </div>
 
     <div class="col-md-8">
-        <div class="card border-0 shadow-sm">
+        {{-- كشف الحساب المفصّل --}}
+        <div class="card border-0 shadow-sm mb-3">
             <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between">
-                <h6 class="fw-bold mb-0">الفواتير</h6>
-                <a href="{{ route('invoices.create') }}?customer_id={{ $customer->id }}" class="btn btn-sm btn-primary">
-                    <i class="fas fa-plus"></i> فاتورة جديدة
-                </a>
+                <h6 class="fw-bold mb-0"><i class="fas fa-list-alt me-2 text-primary"></i>كشف الحساب</h6>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('customers.export.pdf', $customer) }}" class="btn btn-sm btn-outline-danger" target="_blank">
+                        <i class="fas fa-file-pdf me-1"></i> PDF
+                    </a>
+                    <a href="{{ route('customers.export.excel', $customer) }}" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-file-excel me-1"></i> Excel
+                    </a>
+                    <a href="{{ route('invoices.create') }}?customer_id={{ $customer->id }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus"></i> فاتورة جديدة
+                    </a>
+                </div>
             </div>
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-sm table-hover mb-0 align-middle">
                     <thead class="table-light">
-                        <tr><th>رقم الفاتورة</th><th>التاريخ</th><th>المبلغ</th><th>المدفوع</th><th>الحالة</th><th></th></tr>
+                        <tr>
+                            <th>التاريخ</th>
+                            <th>البيان</th>
+                            <th class="text-danger">مدين</th>
+                            <th class="text-success">دائن</th>
+                            <th>الرصيد</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        @php $labels = ['draft'=>'مسودة','sent'=>'مرسلة','paid'=>'مدفوعة','overdue'=>'متأخرة','cancelled'=>'ملغاة'] @endphp
-                        @forelse($customer->invoices as $invoice)
-                        <tr>
-                            <td><a href="{{ route('invoices.show', $invoice) }}" class="fw-semibold text-decoration-none">{{ $invoice->invoice_number }}</a></td>
-                            <td class="small">{{ $invoice->invoice_date->format('Y-m-d') }}</td>
-                            <td>{{ number_format($invoice->total_amount, 2) }}</td>
-                            <td>{{ number_format($invoice->paid_amount, 2) }}</td>
-                            <td><span class="badge badge-{{ $invoice->status }}">{{ $labels[$invoice->status] }}</span></td>
+                        @forelse($ledger as $row)
+                        <tr class="{{ $row['type'] === 'payment' ? 'table-success bg-opacity-25' : '' }}">
+                            <td class="small">{{ \Carbon\Carbon::parse($row['date'])->format('Y-m-d') }}</td>
                             <td>
-                                <a href="{{ route('invoices.whatsapp', $invoice) }}" class="btn btn-xs btn-whatsapp" target="_blank" title="إرسال واتساب"><i class="fab fa-whatsapp"></i></a>
+                                <a href="{{ $row['ref'] }}" class="text-decoration-none small">{{ $row['description'] }}</a>
+                            </td>
+                            <td class="text-danger fw-semibold">
+                                {{ $row['debit'] > 0 ? number_format($row['debit'], 2) : '—' }}
+                            </td>
+                            <td class="text-success fw-semibold">
+                                {{ $row['credit'] > 0 ? number_format($row['credit'], 2) : '—' }}
+                            </td>
+                            <td class="{{ $row['balance'] > 0 ? 'text-danger' : 'text-success' }} fw-bold small">
+                                {{ number_format($row['balance'], 2) }}
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="6" class="text-center text-muted py-4">لا توجد فواتير</td></tr>
+                        <tr><td colspan="5" class="text-center text-muted py-4">لا توجد حركات</td></tr>
                         @endforelse
                     </tbody>
+                    @if($ledger->count())
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="2" class="fw-bold text-end">الإجمالي</td>
+                            <td class="text-danger fw-bold">{{ number_format($ledger->sum('debit'), 2) }}</td>
+                            <td class="text-success fw-bold">{{ number_format($ledger->sum('credit'), 2) }}</td>
+                            <td class="{{ $ledger->last()['balance'] > 0 ? 'text-danger' : 'text-success' }} fw-bold">
+                                {{ number_format($ledger->last()['balance'], 2) }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                    @endif
                 </table>
             </div>
         </div>

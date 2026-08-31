@@ -28,6 +28,12 @@ class TemplateController extends Controller
         return redirect()->route('templates.index')->with('success', 'تم إنشاء القالب.');
     }
 
+    public function show(InvoiceTemplate $template)
+    {
+        abort_if($template->tenant_id !== auth()->user()->tenant_id, 403);
+        return redirect()->route('templates.edit', $template);
+    }
+
     public function edit(InvoiceTemplate $template)
     {
         abort_if($template->tenant_id !== auth()->user()->tenant_id, 403);

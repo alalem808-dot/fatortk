@@ -93,13 +93,33 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">الكمية الحالية</label>
-                            <input type="number" name="stock_quantity" class="form-control" value="{{ old('stock_quantity', $product->stock_quantity ?? 0) }}" min="0">
+                            <label class="form-label">الكمية الحالية (الرصيد الافتتاحي)</label>
+                            <input type="number" name="stock_quantity" class="form-control" value="{{ old('stock_quantity', $product->stock_quantity ?? 0) }}" min="0" step="0.001">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">حد التنبيه (أدنى كمية)</label>
-                            <input type="number" name="min_stock_alert" class="form-control" value="{{ old('min_stock_alert', $product->min_stock_alert ?? 5) }}" min="0">
+                            <input type="number" name="min_stock_alert" class="form-control" value="{{ old('min_stock_alert', $product->min_stock_alert ?? 5) }}" min="0" step="0.001">
                         </div>
+                        @if(!isset($product))
+                        {{-- عند إنشاء منتج جديد فقط: تحديد المخزن لإضافة الرصيد الافتتاحي --}}
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">
+                                المخزن
+                                <span class="text-muted fw-normal small">(سيُضاف الرصيد الافتتاحي لهذا المخزن)</span>
+                            </label>
+                            <select name="warehouse_id" class="form-select">
+                                <option value="">-- المخزن الافتراضي --</option>
+                                @isset($warehouses)
+                                @foreach($warehouses as $wh)
+                                    <option value="{{ $wh->id }}"
+                                        {{ old('warehouse_id', $defaultWarehouse?->id) == $wh->id ? 'selected' : '' }}>
+                                        {{ $wh->name }}{{ $wh->is_default ? ' (افتراضي)' : '' }}
+                                    </option>
+                                @endforeach
+                                @endisset
+                            </select>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>

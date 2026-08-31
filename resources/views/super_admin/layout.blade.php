@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>@yield('title', 'Super Admin') - فاتورتك</title>
+@php $favicon = \App\Models\PlatformSetting::imageUrl('platform_favicon'); @endphp
+@if($favicon)
+<link rel="icon" type="image/png" href="{{ $favicon }}">
+@endif
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
@@ -45,6 +49,29 @@
         </a>
         <a href="{{ route('super_admin.plans') }}" class="nav-link {{ request()->routeIs('super_admin.plans*') ? 'active' : '' }}">
             <i class="fas fa-crown"></i> خطط الاشتراك
+        </a>
+        <a href="{{ route('super_admin.currencies') }}" class="nav-link {{ request()->routeIs('super_admin.currencies*') ? 'active' : '' }}">
+            <i class="fas fa-coins"></i> العملات
+        </a>
+        <a href="{{ route('super_admin.backups.index') }}" class="nav-link {{ request()->routeIs('super_admin.backups*') ? 'active' : '' }}">
+            <i class="fas fa-database"></i> النسخ الاحتياطي
+        </a>
+        <div class="section-label">الإيرادات والتحليل</div>
+        <a href="{{ route('super_admin.revenue.index') }}" class="nav-link {{ request()->routeIs('super_admin.revenue*') ? 'active' : '' }}">
+            <i class="fas fa-dollar-sign"></i> الإيرادات والمدفوعات
+        </a>
+        <a href="{{ route('super_admin.usage_stats') }}" class="nav-link {{ request()->routeIs('super_admin.usage_stats*') ? 'active' : '' }}">
+            <i class="fas fa-chart-bar"></i> إحصائيات الاستخدام
+        </a>
+        <div class="section-label">التواصل والمتابعة</div>
+        <a href="{{ route('super_admin.notifications.index') }}" class="nav-link {{ request()->routeIs('super_admin.notifications*') ? 'active' : '' }}">
+            <i class="fas fa-bell"></i> الإشعارات والتنبيهات
+        </a>
+        <a href="{{ route('super_admin.support.index') }}" class="nav-link {{ request()->routeIs('super_admin.support*') ? 'active' : '' }}">
+            <i class="fas fa-headset"></i> الدعم الفني
+        </a>
+        <a href="{{ route('super_admin.activity_log') }}" class="nav-link {{ request()->routeIs('super_admin.activity_log') ? 'active' : '' }}">
+            <i class="fas fa-history"></i> سجل النشاط
         </a>
         <div class="section-label">الإعدادات</div>
         <a href="{{ route('super_admin.settings') }}" class="nav-link {{ request()->routeIs('super_admin.settings') ? 'active' : '' }}">

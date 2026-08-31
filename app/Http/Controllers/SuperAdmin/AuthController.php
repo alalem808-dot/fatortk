@@ -30,6 +30,8 @@ class AuthController extends Controller
         }
 
         Auth::guard('super_admin')->login($admin, $request->boolean('remember'));
+        // DESIGN-09 Fix: تسجيل تاريخ آخر دخول للـ SuperAdmin
+        $admin->update(['last_login' => now()]);
         return redirect()->route('super_admin.dashboard');
     }
 
@@ -37,6 +39,7 @@ class AuthController extends Controller
     {
         Auth::guard('super_admin')->logout();
         $request->session()->invalidate();
+        $request->session()->regenerateToken();
         return redirect()->route('super_admin.login');
     }
 }

@@ -8,6 +8,7 @@ class SubscriptionPlan extends Model
 {
     protected $fillable = [
         'slug', 'name', 'price_monthly', 'price_yearly',
+        'price_monthly_usd', 'price_yearly_usd',
         'max_invoices_per_month', 'max_customers', 'max_products', 'max_users',
         'excel_export', 'email_send', 'stock_management', 'custom_templates',
         'max_templates', 'api_access', 'is_active',

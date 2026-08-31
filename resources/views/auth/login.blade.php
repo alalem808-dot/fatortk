@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل الدخول - فاتورتك</title>
+    @php $favicon = \App\Models\PlatformSetting::imageUrl('platform_favicon'); @endphp
+    @if($favicon)<link rel="icon" type="image/png" href="{{ $favicon }}">@endif
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
@@ -31,9 +33,15 @@
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-5 col-lg-4">
-            <div class="text-center mb-4">
-                <div class="brand-logo">فاتورتك</div>
-                <p class="text-white-50 mt-1 small">نظام إدارة الفواتير والمخزون</p>
+            <div class="text-center mb-2">
+                @php $loginLogo = \App\Models\PlatformSetting::imageUrl('login_logo'); @endphp
+                @if($loginLogo)
+                    <img src="{{ $loginLogo }}" alt="{{ \App\Models\PlatformSetting::get('platform_name','فاتورتك') }}"
+                         style="max-height:120px;max-width:220px;object-fit:contain" class="mb-2">
+                @else
+                    <div class="brand-logo">{{ \App\Models\PlatformSetting::get('platform_name','فاتورتك') }}</div>
+                @endif
+                
             </div>
 
             <div class="card p-4">
@@ -83,7 +91,7 @@
 
                 <div class="divider mt-4"><span>لا تملك حساباً؟</span></div>
 
-                <a href="https://wa.me/249912345678?text={{ urlencode('مرحباً، أريد إنشاء حساب في فاتورتك') }}"
+                <a href="{{ \App\Models\PlatformSetting::whatsappUrl('whatsapp_register_msg') }}"
                    target="_blank"
                    class="btn w-100 mt-2 fw-semibold"
                    style="background:#25D366;color:#fff;border-radius:10px;padding:.65rem">

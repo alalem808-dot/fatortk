@@ -8,9 +8,9 @@
 @php
 $isArabic = $invoice->language == 'ar';
 $labels = $isArabic
-    ? ['draft'=>'مسودة','sent'=>'مرسلة','paid'=>'مدفوعة','overdue'=>'متأخرة','cancelled'=>'ملغاة']
-    : ['draft'=>'Draft','sent'=>'Sent','paid'=>'Paid','overdue'=>'Overdue','cancelled'=>'Cancelled'];
-$statusColors = ['draft'=>'secondary','sent'=>'primary','paid'=>'success','overdue'=>'warning','cancelled'=>'dark'];
+    ? ['draft'=>'مسودة','sent'=>'مرسلة','paid'=>'مدفوعة','partially_paid'=>'مدفوعة جزئياً','overdue'=>'متأخرة','cancelled'=>'ملغاة','returned'=>'مرتجعة']
+    : ['draft'=>'Draft','sent'=>'Sent','paid'=>'Paid','partially_paid'=>'Partially Paid','overdue'=>'Overdue','cancelled'=>'Cancelled','returned'=>'Returned'];
+$statusColors = ['draft'=>'secondary','sent'=>'primary','paid'=>'success','partially_paid'=>'info','overdue'=>'warning','cancelled'=>'dark','returned'=>'danger'];
 $txt = $isArabic ? [
     'invoice'=>'فاتورة','bill_to'=>'فاتورة إلى','invoice_date'=>'تاريخ الفاتورة',
     'due_date'=>'تاريخ الاستحقاق','description'=>'الوصف','quantity'=>'الكمية',
@@ -69,6 +69,12 @@ $txt = $isArabic ? [
             @endforeach
         </ul>
     </div>
+
+    @if(in_array($invoice->status, ['sent','paid','partially_paid']))
+    <a href="{{ route('returns.create', $invoice) }}" class="btn btn-sm btn-outline-warning">
+        <i class="fas fa-undo"></i> إنشاء مرتجع
+    </a>
+    @endif
 
     <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline ms-auto"
         onsubmit="return confirm('{{ $txt['confirm_delete'] }}')">
@@ -162,23 +168,52 @@ $txt = $isArabic ? [
 
                 {{-- جدول البنود --}}
                 <div class="table-responsive mb-4">
-                    <table class="table align-middle" style="border-radius:10px;overflow:hidden;">
+                    <table class="table align-middle" style="border-radius:10px;overflow:hidden;min-width:550px;">
                         <thead style="background:linear-gradient(90deg,#1e40af,#3b82f6);color:#fff;">
                             <tr>
                                 <th class="py-3">#</th>
                                 <th>{{ $txt['description'] }}</th>
-                                <th class="text-center">{{ $txt['quantity'] }}</th>
-                                <th class="text-center">{{ $txt['price'] }}</th>
-                                <th class="text-center">{{ $txt['tax'] }}</th>
-                                <th class="text-end">{{ $txt['total'] }}</th>
+                                <th class="text-center" style="width:80px;">{{ $txt['quantity'] }}</th>
+                                @if($invoice->returns->isNotEmpty())
+                                <th class="text-center" style="width:80px;">{{ $isArabic ? 'مرتجع' : 'Returned' }}</th>
+                                <th class="text-center" style="width:80px;">{{ $isArabic ? 'الصافي' : 'Net' }}</th>
+                                @endif
+                                <th class="text-center" style="width:100px;">{{ $txt['price'] }}</th>
+                                <th class="text-center" style="width:60px;">{{ $txt['tax'] }}</th>
+                                <th class="text-end" style="width:100px;">{{ $txt['total'] }}</th>
                             </tr>
                         </thead>
                         <tbody>
+                            @php
+                                $returnedQtys = [];
+                                foreach ($invoice->returns as $ret) {
+                                    foreach ($ret->items as $ri) {
+                                        $returnedQtys[$ri->invoice_item_id] =
+                                            ($returnedQtys[$ri->invoice_item_id] ?? 0) + $ri->quantity;
+                                    }
+                                }
+                            @endphp
                             @foreach($invoice->items as $i => $item)
+                            @php
+                                $returnedQty = $returnedQtys[$item->id] ?? 0;
+                                $netQty = $item->quantity - $returnedQty;
+                            @endphp
                             <tr class="{{ $loop->even ? 'table-light' : '' }}">
                                 <td class="text-muted">{{ $i + 1 }}</td>
                                 <td class="fw-semibold">{{ $item->description }}</td>
                                 <td class="text-center">{{ $item->quantity }}</td>
+                                @if($invoice->returns->isNotEmpty())
+                                <td class="text-center">
+                                    @if($returnedQty > 0)
+                                        <span class="badge bg-warning text-dark">-{{ number_format($returnedQty, 2) }}</span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td class="text-center fw-bold {{ $netQty <= 0 ? 'text-danger' : 'text-success' }}">
+                                    {{ number_format($netQty, 2) }}
+                                </td>
+                                @endif
                                 <td class="text-center">{{ number_format($item->unit_price, 2) }}</td>
                                 <td class="text-center">
                                     <span class="badge bg-light text-dark">{{ $item->tax_rate }}%</span>
@@ -189,6 +224,31 @@ $txt = $isArabic ? [
                         </tbody>
                     </table>
                 </div>
+
+                {{-- ملخص المرتجعات إن وجدت --}}
+                @if($invoice->returns->isNotEmpty())
+                <div class="mb-4 p-3 rounded" style="background:#fff7ed;border:1px solid #fed7aa;">
+                    <div class="fw-bold text-warning mb-2">
+                        <i class="fas fa-undo me-1"></i>
+                        {{ $isArabic ? 'المرتجعات المسجّلة' : 'Registered Returns' }}
+                    </div>
+                    @foreach($invoice->returns as $ret)
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-warning-subtle">
+                        <div class="small">
+                            <span class="fw-semibold">{{ $ret->return_date->format('Y-m-d') }}</span>
+                            @if($ret->reason)
+                                <span class="text-muted ms-2">— {{ $ret->reason }}</span>
+                            @endif
+                        </div>
+                        <span class="text-danger fw-bold small">- {{ number_format($ret->total, 2) }} {{ $invoice->currency }}</span>
+                    </div>
+                    @endforeach
+                    <div class="d-flex justify-content-between mt-2 fw-bold text-danger">
+                        <span>{{ $isArabic ? 'إجمالي المرتجع' : 'Total Returned' }}</span>
+                        <span>- {{ number_format($invoice->returns->sum('total'), 2) }} {{ $invoice->currency }}</span>
+                    </div>
+                </div>
+                @endif
 
                 {{-- الإجماليات --}}
                 <div class="row justify-content-end">
@@ -267,6 +327,7 @@ $txt = $isArabic ? [
             </div>
             @if($invoice->remaining_amount > 0)
             <div class="card-footer bg-white" style="border-radius:0 0 16px 16px;">
+                @php $paymentMethods = \App\Models\PaymentMethod::where('tenant_id', auth()->user()->tenant_id)->where('is_active', true)->orderBy('sort_order')->get(); @endphp
                 <form action="{{ route('payments.store') }}" method="POST">
                     @csrf
                     <input type="hidden" name="invoice_id" value="{{ $invoice->id }}">
@@ -280,10 +341,11 @@ $txt = $isArabic ? [
                         </div>
                         <div class="col-12">
                             <select name="payment_method" class="form-select form-select-sm">
-                                <option value="cash">{{ $txt['cash'] }}</option>
-                                <option value="bank">{{ $txt['bank'] }}</option>
-                                <option value="card">{{ $txt['card'] }}</option>
-                                <option value="cheque">{{ $txt['cheque'] }}</option>
+                                @forelse($paymentMethods as $pm)
+                                <option value="{{ $pm->code }}">{{ $pm->name }}</option>
+                                @empty
+                                <option value="cash">نقدي</option>
+                                @endforelse
                             </select>
                         </div>
                         <input type="hidden" name="payment_date" value="{{ date('Y-m-d') }}">

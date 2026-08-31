@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Customer extends Model
 {
@@ -17,7 +18,8 @@ class Customer extends Model
     public function getTotalDueAttribute(): float
     {
         return $this->invoices()
-            ->whereIn('status', ['sent', 'overdue'])
-            ->sum(\DB::raw('total_amount - paid_amount'));
+            ->whereIn('status', ['sent', 'overdue', 'partially_paid'])
+            ->selectRaw('SUM(total_amount - paid_amount) as due')
+            ->value('due') ?? 0.0;
     }
 }

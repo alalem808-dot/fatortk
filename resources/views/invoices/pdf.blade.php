@@ -262,10 +262,23 @@ body {
     @if($showDisc && $invoice->discount_amount > 0)
     <tr><td class="tl">{{ $t['disc'] }}</td><td class="tr" style="color:#dc2626">- {{ number_format($invoice->discount_amount, 2) }} {{ $invoice->currency }}</td></tr>
     @endif
+    @php
+        // الإجمالي الأصلي = المجموع من البنود (قبل أي مرتجع)
+        $originalTotal = $invoice->subtotal + $invoice->tax_amount
+            - ($invoice->discount_type === 'percent'
+                ? (($invoice->subtotal) * $invoice->discount_amount / 100)
+                : $invoice->discount_amount);
+        $originalTotal = max(0, round($originalTotal, 2));
+        $totalReturned = $invoice->returns->sum('total');
+    @endphp
     <tr class="grand">
         <td class="tl">{{ $t['grand'] }}</td>
-        <td class="tr">{{ number_format($invoice->total_amount, 2) }} {{ $invoice->currency }}</td>
+        <td class="tr">{{ number_format($originalTotal, 2) }} {{ $invoice->currency }}</td>
     </tr>
+    @if($totalReturned > 0)
+    <tr><td class="tl" style="color:#b45309">{{ $isAr ? 'إجمالي المرتجع' : 'Total Returns' }}</td><td class="tr" style="color:#b45309">- {{ number_format($totalReturned, 2) }} {{ $invoice->currency }}</td></tr>
+    <tr><td class="tl" style="font-weight:bold">{{ $isAr ? 'الصافي بعد المرتجع' : 'Net After Returns' }}</td><td class="tr" style="font-weight:bold">{{ number_format(max(0, $originalTotal - $totalReturned), 2) }} {{ $invoice->currency }}</td></tr>
+    @endif
     @if($invoice->paid_amount > 0)
     <tr><td class="tl">{{ $t['paid'] }}</td><td class="tr" style="color:#16a34a">{{ number_format($invoice->paid_amount, 2) }} {{ $invoice->currency }}</td></tr>
     <tr class="balance"><td class="tl">{{ $t['bal'] }}</td><td class="tr">{{ number_format($invoice->remaining_amount, 2) }} {{ $invoice->currency }}</td></tr>
